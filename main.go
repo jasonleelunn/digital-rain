@@ -29,8 +29,11 @@ const (
 	YELLOW ansiEscapeCode = "\033[33m"
 	BLUE   ansiEscapeCode = "\033[34m"
 	WHITE  ansiEscapeCode = "\033[37m"
+	BLACK  ansiEscapeCode = "\033[38;2;0;0;0m"
 
-	DIM      ansiEscapeCode = "\033[38;2;11;32;17m"
+	INTENSE_GREEN ansiEscapeCode = "\033[38;1;11;32;17m"
+	DIM_GREEN     ansiEscapeCode = "\033[38;2;11;32;17m"
+
 	BLACK_BG ansiEscapeCode = "\033[48;2;0;0;0m"
 
 	CLEAR       ansiEscapeCode = "\033[%dA\033[%dD"
@@ -81,6 +84,7 @@ func main() {
 
 	flag.Parse()
 
+	// TODO: colour options
 	// colour := getColour()
 
 	// TODO: handle changing terminal size
@@ -89,8 +93,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	// totalChars := width * height
 
 	state := state{
 		positions: map[int]int{},
@@ -104,7 +106,7 @@ func main() {
 			// random char (ASCII decimal 48 to 122)
 			char := rune(rand.Intn(123-48) + 48)
 
-			charWithColour := append([]rune(DIM), char)
+			charWithColour := append([]rune(BLACK), char)
 
 			state.baseChars = append(state.baseChars, char)
 			state.styledChars = append(state.styledChars, charWithColour...)
@@ -122,11 +124,13 @@ func main() {
 
 				var updatedChar []rune
 
-				if row == state.positions[col] {
-					updatedChar = append([]rune(WHITE), char)
-					// updatedChar = append([]rune(BOLD), updatedChar...)
-				} else {
-					updatedChar = append([]rune(DIM), char)
+				switch state.positions[col] {
+				case row:
+					updatedChar = append([]rune(INTENSE_GREEN), char)
+				case row + 1, row + 2, row + 3, row + 4, row + 5:
+					updatedChar = append([]rune(DIM_GREEN), char)
+				default:
+					updatedChar = append([]rune(BLACK), char)
 				}
 
 				state.styledChars = append(state.styledChars, updatedChar...)
@@ -154,6 +158,7 @@ func main() {
 		clearTerminal(width, height)
 		os.Stdout.WriteString(output)
 
-		time.Sleep(time.Millisecond * 200)
+		// TODO: timing options
+		time.Sleep(time.Millisecond * 100)
 	}
 }
