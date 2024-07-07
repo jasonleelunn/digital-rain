@@ -13,7 +13,10 @@ import (
 	"golang.org/x/term"
 )
 
-type ansiEscapeCode string
+type colour struct {
+	bright string
+	faint  string
+}
 
 type state struct {
 	styledChars []rune
@@ -22,54 +25,59 @@ type state struct {
 }
 
 const (
-	RESET  ansiEscapeCode = "\033[0m"
-	BOLD   ansiEscapeCode = "\033[1m"
-	RED    ansiEscapeCode = "\033[31m"
-	GREEN  ansiEscapeCode = "\033[32m"
-	YELLOW ansiEscapeCode = "\033[33m"
-	BLUE   ansiEscapeCode = "\033[34m"
-	WHITE  ansiEscapeCode = "\033[37m"
-	BLACK  ansiEscapeCode = "\033[38;2;0;0;0m"
+	RESET       string = "\033[0m"
+	CLEAR       string = "\033[%dA\033[%dD"
+	HIDE_CURSOR string = "\033[?25l"
+	SHOW_CURSOR string = "\033[?25h"
 
-	INTENSE_GREEN ansiEscapeCode = "\033[38;1;11;32;17m"
-	DIM_GREEN     ansiEscapeCode = "\033[38;2;11;32;17m"
-
-	BLACK_BG ansiEscapeCode = "\033[48;2;0;0;0m"
-
-	CLEAR       ansiEscapeCode = "\033[%dA\033[%dD"
-	HIDE_CURSOR ansiEscapeCode = "\033[?25l"
-	SHOW_CURSOR ansiEscapeCode = "\033[?25h"
+	BLACK_BG      string = "\033[48;5;16m"
+	BLACK         string = "\033[38;5;16m"
+	FAINT_RED     string = "\033[38;5;52m"
+	BRIGHT_RED    string = "\033[38;5;196m"
+	FAINT_GREEN   string = "\033[38;5;22m"
+	BRIGHT_GREEN  string = "\033[38;5;46m"
+	FAINT_YELLOW  string = "\033[38;5;58m"
+	BRIGHT_YELLOW string = "\033[38;5;226m"
+	FAINT_BLUE    string = "\033[38;5;24m"
+	BRIGHT_BLUE   string = "\033[38;5;51m"
 )
 
 var (
-	colours = map[string]ansiEscapeCode{
-		"red":    RED,
-		"green":  GREEN,
-		"yellow": YELLOW,
-		"blue":   BLUE,
+	colours = map[string]colour{
+		"red":    makeColour(FAINT_RED, BRIGHT_RED),
+		"green":  makeColour(FAINT_GREEN, BRIGHT_GREEN),
+		"yellow": makeColour(FAINT_YELLOW, BRIGHT_YELLOW),
+		"blue":   makeColour(FAINT_BLUE, BRIGHT_BLUE),
 	}
 
-	colourChoice = flag.String("colour", "green", "Set the output colour")
+	colourChoice = flag.String("colour", "green", "Set the foreground colour")
 )
 
 func clearTerminal(width int, height int) {
-	clearString := fmt.Sprintf(string(CLEAR), height, width)
+	clearString := fmt.Sprintf(CLEAR, height, width)
 	os.Stdout.Write([]byte(clearString))
 }
 
-func getColour() ansiEscapeCode {
+func makeColour(faint string, bright string) colour {
+	return colour{
+		bright,
+		faint,
+	}
+}
+
+func getColour() colour {
 	colour, ok := colours[*colourChoice]
 
 	if !ok {
 		// NOTE: passed an invalid colour, return the default
-		return GREEN
+		return colours["green"]
 	}
 
 	return colour
 }
 
 func main() {
-	os.Stdout.Write([]byte(HIDE_CURSOR))
+	flag.Parse()
 
 	// Set up signal channel to capture interrupt signals
 	signalCh := make(chan os.Signal, 1)
@@ -82,10 +90,7 @@ func main() {
 		os.Exit(1)
 	}()
 
-	flag.Parse()
-
-	// TODO: colour options
-	// colour := getColour()
+	colour := getColour()
 
 	// TODO: handle changing terminal size
 	width, height, err := term.GetSize(int(os.Stdout.Fd()))
@@ -106,12 +111,11 @@ func main() {
 			// random char (ASCII decimal 48 to 122)
 			char := rune(rand.Intn(123-48) + 48)
 
-			charWithColour := append([]rune(BLACK), char)
-
 			state.baseChars = append(state.baseChars, char)
-			state.styledChars = append(state.styledChars, charWithColour...)
 		}
 	}
+
+	os.Stdout.Write([]byte(HIDE_CURSOR))
 
 	for {
 		state.styledChars = []rune{}
@@ -126,9 +130,9 @@ func main() {
 
 				switch state.positions[col] {
 				case row:
-					updatedChar = append([]rune(INTENSE_GREEN), char)
+					updatedChar = append([]rune(colour.bright), char)
 				case row + 1, row + 2, row + 3, row + 4, row + 5:
-					updatedChar = append([]rune(DIM_GREEN), char)
+					updatedChar = append([]rune(colour.faint), char)
 				default:
 					updatedChar = append([]rune(BLACK), char)
 				}
