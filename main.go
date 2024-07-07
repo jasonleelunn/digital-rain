@@ -19,9 +19,12 @@ type colour struct {
 }
 
 type state struct {
-	styledChars []rune
-	baseChars   []rune
-	positions   map[int]int
+	width         int
+	height        int
+	styledChars   []rune
+	baseChars     []rune
+	positions     map[int]int
+	columnColours map[int]colour
 }
 
 const (
@@ -76,6 +79,23 @@ func getColour() colour {
 	return colour
 }
 
+func (s *state) initialise(width int, height int) {
+	s.width = width
+	s.height = height
+
+	for col := range width {
+		pos := rand.Intn(height)
+		s.positions[col] = pos
+
+		for range height {
+			// random char (ASCII decimal 48 to 122)
+			char := rune(rand.Intn(123-48) + 48)
+
+			s.baseChars = append(s.baseChars, char)
+		}
+	}
+}
+
 func main() {
 	flag.Parse()
 
@@ -90,9 +110,8 @@ func main() {
 		os.Exit(1)
 	}()
 
-	colour := getColour()
+	colourChoice := getColour()
 
-	// TODO: handle changing terminal size
 	width, height, err := term.GetSize(int(os.Stdout.Fd()))
 
 	if err != nil {
@@ -100,39 +119,40 @@ func main() {
 	}
 
 	state := state{
-		positions: map[int]int{},
-	}
-
-	for col := range width {
-		pos := rand.Intn(height)
-		state.positions[col] = pos
-
-		for range height {
-			// random char (ASCII decimal 48 to 122)
-			char := rune(rand.Intn(123-48) + 48)
-
-			state.baseChars = append(state.baseChars, char)
-		}
+		positions:     map[int]int{},
+		columnColours: map[int]colour{},
 	}
 
 	os.Stdout.Write([]byte(HIDE_CURSOR))
 
+	state.initialise(width, height)
+
 	for {
+		width, height, err := term.GetSize(int(os.Stdout.Fd()))
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if state.width != width || state.height != height {
+			state.initialise(width, height)
+		}
+
 		state.styledChars = []rune{}
 
-		for row := range height {
-			for col := range width {
+		for row := range state.height {
+			for col := range state.width {
 
-				pos := col + (row * width)
+				pos := col + (row * state.width)
 				char := state.baseChars[pos]
 
 				var updatedChar []rune
 
 				switch state.positions[col] {
 				case row:
-					updatedChar = append([]rune(colour.bright), char)
+					updatedChar = append([]rune(colourChoice.bright), char)
 				case row + 1, row + 2, row + 3, row + 4, row + 5:
-					updatedChar = append([]rune(colour.faint), char)
+					updatedChar = append([]rune(colourChoice.faint), char)
 				default:
 					updatedChar = append([]rune(BLACK), char)
 				}
@@ -143,23 +163,21 @@ func main() {
 
 		}
 
-		for col := range width {
-			if state.positions[col] >= height {
+		for col := range state.width {
+			if state.positions[col] >= state.height {
 				state.positions[col] = 0
 			} else {
 				state.positions[col]++
 			}
 		}
 
+		// TODO: use a string builder?
 		// var sb strings.Builder
-		//
-		// sb.WriteString()
-		//
 		output := string(BLACK_BG) + string(state.styledChars) + string(RESET)
 
 		// NOTE: clear the previous output just before we paint the new output
 		// to try and prevent flickering
-		clearTerminal(width, height)
+		clearTerminal(state.width, state.height)
 		os.Stdout.WriteString(output)
 
 		// TODO: timing options
