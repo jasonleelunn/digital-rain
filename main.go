@@ -43,6 +43,9 @@ const (
 	BRIGHT_YELLOW string = "\033[38;5;226m"
 	FAINT_BLUE    string = "\033[38;5;24m"
 	BRIGHT_BLUE   string = "\033[38;5;51m"
+
+	DEFAULT_COLOUR_CHOICE string = "green"
+	DEFAULT_SPEED_CHOICE  string = "normal"
 )
 
 var (
@@ -53,7 +56,14 @@ var (
 		"blue":   makeColour(FAINT_BLUE, BRIGHT_BLUE),
 	}
 
-	colourChoice = flag.String("colour", "green", "Set the foreground colour")
+	speeds = map[string]time.Duration{
+		"slow":   time.Millisecond * 200,
+		"normal": time.Millisecond * 100,
+		"fast":   time.Millisecond * 50,
+	}
+
+	colourChoice = flag.String("colour", DEFAULT_COLOUR_CHOICE, "Set the foreground colour")
+	speedChoice  = flag.String("speed", DEFAULT_SPEED_CHOICE, "Set the rain speed")
 )
 
 func clearTerminal(width int, height int) {
@@ -73,10 +83,21 @@ func getColour() colour {
 
 	if !ok {
 		// NOTE: passed an invalid colour, return the default
-		return colours["green"]
+		return colours[DEFAULT_COLOUR_CHOICE]
 	}
 
 	return colour
+}
+
+func getSleepDuration() time.Duration {
+	duration, ok := speeds[*speedChoice]
+
+	if !ok {
+		// NOTE: passed an invalid speed, return the default
+		return speeds[DEFAULT_SPEED_CHOICE]
+	}
+
+	return duration
 }
 
 func (s *state) initialise(width int, height int) {
@@ -111,6 +132,7 @@ func main() {
 	}()
 
 	colourChoice := getColour()
+	sleepDuration := getSleepDuration()
 
 	width, height, err := term.GetSize(int(os.Stdout.Fd()))
 
@@ -134,6 +156,7 @@ func main() {
 			log.Fatal(err)
 		}
 
+		// handle resized window
 		if state.width != width || state.height != height {
 			state.initialise(width, height)
 		}
@@ -158,9 +181,7 @@ func main() {
 				}
 
 				state.styledChars = append(state.styledChars, updatedChar...)
-
 			}
-
 		}
 
 		for col := range state.width {
@@ -171,8 +192,6 @@ func main() {
 			}
 		}
 
-		// TODO: use a string builder?
-		// var sb strings.Builder
 		output := string(BLACK_BG) + string(state.styledChars) + string(RESET)
 
 		// NOTE: clear the previous output just before we paint the new output
@@ -180,7 +199,6 @@ func main() {
 		clearTerminal(state.width, state.height)
 		os.Stdout.WriteString(output)
 
-		// TODO: timing options
-		time.Sleep(time.Millisecond * 100)
+		time.Sleep(sleepDuration)
 	}
 }
