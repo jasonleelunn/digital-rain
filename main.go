@@ -62,8 +62,8 @@ var (
 		"fast":   time.Millisecond * 50,
 	}
 
-	colourChoice = flag.String("colour", DEFAULT_COLOUR_CHOICE, "Set the foreground colour")
-	speedChoice  = flag.String("speed", DEFAULT_SPEED_CHOICE, "Set the rain speed")
+	colourChoice = flag.String("colour", DEFAULT_COLOUR_CHOICE, "Set the foreground colour [red|green|yellow|blue]")
+	speedChoice  = flag.String("speed", DEFAULT_SPEED_CHOICE, "Set the rain speed [slow|normal|fast]")
 )
 
 func clearTerminal(width int, height int) {
