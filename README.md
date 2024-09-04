@@ -1,4 +1,4 @@
-# digital rain :cloud_with_rain: :computer:
+# digital rain :computer: :cloud_with_rain:
 
 ![digital rain GIF](./digital-rain.gif)
 
@@ -26,4 +26,4 @@ go build
 ## Usage
 
 - Run `./digital-rain --help` to view behaviour options
-- Ctrl+c to exit
+- Ctrl+C to exit
